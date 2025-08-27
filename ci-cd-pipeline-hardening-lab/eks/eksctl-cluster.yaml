@@ -1,0 +1,36 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: cicd-cluster
+  region: us-east-1
+
+vpc:
+  id: vpc-04b7f343f1cef646b
+  subnets:
+    private:
+      us-east-1a:
+        id: subnet-04c78a79fb2cae3a8
+      us-east-1b:
+        id: subnet-05f21de0eaa13ebc2
+
+nodeGroups:
+  - name: mng
+    instanceType: t3.medium
+    desiredCapacity: 2
+    privateNetworking: true
+
+    iam:
+      instanceRoleARN: arn:aws:iam::746669235620:role/eks-node-role
+    ssh:
+      allow: true
+      publicKeyName: NVirg-key
+
+# nodeGroups:
+#   - name: ng-linux
+#     instanceType: t3.medium
+#     desiredCapacity: 2
+#     minSize: 1
+#     maxSize: 3
+#     volumeSize: 20
+#     privateNetworking: true
