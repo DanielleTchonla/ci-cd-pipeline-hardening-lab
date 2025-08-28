@@ -1,3 +1,6 @@
+permissions:
+  id-token: write
+
 name: CI/CD Pipeline for Flask App
 
 on:
