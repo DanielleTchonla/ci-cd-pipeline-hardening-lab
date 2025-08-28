@@ -46,7 +46,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }} # Unique image tag (commit SHA)
         run: |
           # Build the Docker image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f ./Dockerfile .
           
           # Push it to ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
