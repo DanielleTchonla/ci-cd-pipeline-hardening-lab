@@ -1,0 +1,65 @@
+permissions:
+  id-token: write
+
+name: CI/CD Pipeline for Flask App
+
+on:
+  push:
+    branches:
+      - main   # Run pipeline only when code is pushed to the main branch
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest   # Runner environment provided by GitHub
+    
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # This pulls your repo code into the GitHub Actions runner
+        
+      # Step 2: Configure AWS credentials (GitHub secrets required)
+      
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::746669235620:role/github_actions
+          aws-region: us-east-1
+
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1  # Change if your EKS/ECR are in another region
+
+      # Step 3: Log in to Amazon ECR (so we can push the image)
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Step 4: Build and push Docker image to ECR
+      - name: Build, tag, and push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: flask-app   # Your ECR repo name
+          IMAGE_TAG: ${{ github.sha }} # Unique image tag (commit SHA)
+        run: |
+          # Build the Docker image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          
+          # Push it to ECR
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # Step 5: Update Kubernetes deployment with new image
+      - name: Update K8s deployment
+        run: |
+          # Configure kubectl to talk to your EKS cluster
+          aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
+          
+          # Patch the deployment with the new image
+          kubectl set image deployment/flask-app \
+            flask-app=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+          # Verify rollout
+          kubectl rollout status deployment/flask-app
