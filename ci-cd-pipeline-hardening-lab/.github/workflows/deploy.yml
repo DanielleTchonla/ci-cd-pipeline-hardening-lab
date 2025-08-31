@@ -1,11 +1,9 @@
 name: CI/CD Pipeline (EKS + ECR via OIDC)
 
-# Trigger pipeline on push to main
 on:
   push:
     branches: ["main"]
 
-# Required for OIDC
 permissions:
   id-token: write
   contents: read
@@ -15,44 +13,77 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      #1️ Checkout repo
+      - name: Test OIDC assume role
+        run: |
+          aws sts get-caller-identity
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      #2️ Configure AWS credentials using OIDC
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::746669235620:role/GitHubActionsRole
           aws-region: us-east-1
 
-      #3️ Log in to ECR
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
 
-      #4️ Build, tag, and push Docker image
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: flask-cicd
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      #5 Update Kubernetes deployment
-      - name: Deploy to EKS
-        run: |
-          # Configure kubectl with your EKS cluster
-          aws eks update-kubeconfig --region us-east-1 --name cicd-cluster
 
-          # Patch the deployment with the new image
-          kubectl set image deployment/flask-app \
-            flask-app=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+# name: CI/CD Pipeline (EKS + ECR via OIDC)
 
-          # Wait until rollout is complete
-          kubectl rollout status deployment/flask-app
+# # Trigger pipeline on push to main
+# on:
+#   push:
+#     branches: ["main"]
+
+# # Required for OIDC
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       #1️ Checkout repo
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       #2️ Configure AWS credentials using OIDC
+#       - name: Configure AWS credentials via OIDC
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: arn:aws:iam::746669235620:role/GitHubActionsRole
+#           aws-region: us-east-1
+
+#       #3️ Log in to ECR
+#       - name: Login to Amazon ECR
+#         id: login-ecr
+#         uses: aws-actions/amazon-ecr-login@v2
+
+#       #4️ Build, tag, and push Docker image
+#       - name: Build and push Docker image
+#         env:
+#           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#           ECR_REPOSITORY: flask-cicd
+#           IMAGE_TAG: ${{ github.sha }}
+#         run: |
+#           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+#           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+#       #5 Update Kubernetes deployment
+#       - name: Deploy to EKS
+#         run: |
+#           # Configure kubectl with your EKS cluster
+#           aws eks update-kubeconfig --region us-east-1 --name cicd-cluster
+
+#           # Patch the deployment with the new image
+#           kubectl set image deployment/flask-app \
+#             flask-app=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+#           # Wait until rollout is complete
+#           kubectl rollout status deployment/flask-app
 
 
 
